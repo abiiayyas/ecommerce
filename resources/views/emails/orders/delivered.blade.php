@@ -3,10 +3,7 @@
 
 Halo, pesanan Anda dari toko **{{ $orderShop->shop->name ?? 'Toko' }}** telah berhasil dikirim dan sampai ke tujuan.
 
-<div style="text-align: center; margin: 30px 0; padding: 20px; background-color: #f3f4f6; border-radius: 8px;">
-    <p style="margin: 0; font-size: 14px; color: #4b5563; text-transform: uppercase; font-weight: 600;">Kode Transaksi Anda</p>
-    <h1 style="margin: 5px 0 0 0; font-size: 32px; font-weight: 900; color: #16a34a;">{{ $orderShop->order->reference }}</h1>
-</div>
+@include('mail.transaction-reference', ['reference' => $orderShop->order->reference])
 
 ### Rincian Produk:
 <x-mail::panel>
@@ -18,7 +15,7 @@ Halo, pesanan Anda dari toko **{{ $orderShop->shop->name ?? 'Toko' }}** telah be
 
 Terima kasih telah berbelanja menggunakan layanan kami! Jangan lupa berikan ulasan untuk produk dan toko ya!
 
-<x-mail::button :url="route('orders.detail', ['reference' => $orderShop->order->reference, ...$orderShop->order->guestRouteParameters()])" color="success">
+<x-mail::button :url="route('orders.detail', ['reference' => $orderShop->order->reference, ...$orderShop->order->guestRouteParameters()])" color="primary">
 Cek Detail Pesanan
 </x-mail::button>
 
