@@ -2,21 +2,32 @@
 
 namespace App\Actions\Ecommerce\Payment;
 
+use App\Contracts\Payments\PaymentGateway;
+use App\Data\Payments\CreatePaymentData;
+use App\Data\Payments\PaymentMethodData;
+use App\Data\Payments\PaymentTransactionData;
+use App\Enums\PaymentGatewayDriver;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
 use App\Models\Order\Order;
 use App\Models\Payment\Payment;
 use App\Models\User;
-use App\Services\MidtransService;
+use App\Services\Payments\PaymentFeeCalculator;
+use App\Services\Payments\PaymentGatewayManager;
+use App\Services\Payments\PaymentTransactionNotFoundException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
-use RuntimeException;
+use UnexpectedValueException;
 
 class CreatePaymentAction
 {
     public function __construct(
-        public readonly MidtransService $midtransService,
+        private readonly PaymentGatewayManager $paymentGatewayManager,
+        private readonly ?ReconcilePaymentStatusAction $reconcilePaymentStatus = null,
+        private readonly ?PaymentFeeCalculator $paymentFeeCalculator = null,
     ) {}
 
     public function handle(
@@ -24,89 +35,186 @@ class CreatePaymentAction
         string $paymentMethod,
         ?User $actor = null,
         ?string $guestToken = null,
+        ?string $providerCode = null,
     ): Payment {
         $this->authorize($order, $actor, $guestToken);
 
-        if (! in_array($paymentMethod, ['qris', 'bca', 'bni', 'bri'], true)) {
+        $selectedPaymentMethod = PaymentMethod::tryFrom($paymentMethod);
+
+        if ($selectedPaymentMethod === null) {
             throw new InvalidArgumentException('Unsupported payment method.');
         }
 
-        return Cache::lock("payment:create:order:{$order->getKey()}", 90)->block(10, function () use ($order, $paymentMethod, $actor, $guestToken): Payment {
-            $payment = DB::transaction(function () use ($order, $paymentMethod, $actor, $guestToken): Payment {
-                $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->getKey());
+        return Cache::lock("payment:create:order:{$order->getKey()}", 90)->block(10, function () use ($order, $selectedPaymentMethod, $actor, $guestToken, $providerCode): Payment {
+            $payment = $this->existingPayment($order, $actor, $guestToken);
+            $preparedDriver = null;
+            $gateway = null;
 
-                $this->authorize($lockedOrder, $actor, $guestToken);
-
-                $existingPayment = Payment::query()
-                    ->where('payable_type', $lockedOrder->getMorphClass())
-                    ->where('payable_id', $lockedOrder->getKey())
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($existingPayment) {
-                    return $existingPayment;
-                }
-
-                $amount = (int) round((float) $lockedOrder->total);
-                $fee = $paymentMethod === 'qris'
-                    ? (int) round($amount * 0.007)
-                    : 4500;
-
-                $lockedOrder->update([
-                    'payment_fee' => $fee,
-                ]);
-
-                return Payment::query()->create([
-                    'driver' => 'midtrans',
-                    'payable_type' => $lockedOrder->getMorphClass(),
-                    'payable_id' => $lockedOrder->getKey(),
-                    'order_id' => (string) Str::uuid(),
-                    'transaction_id' => null,
-                    'payment_type' => $paymentMethod === 'qris' ? 'qris' : 'bank_transfer',
-                    'account_number' => '',
-                    'channel' => $paymentMethod,
-                    'expired_at' => now()->addDay(),
-                    'amount' => $amount,
-                    'fee' => $fee,
-                    'total' => $amount + $fee,
-                ]);
-            });
+            if ($payment === null) {
+                $preparedDriver = $this->paymentGatewayManager->defaultDriver();
+                $gateway = $this->paymentGatewayManager->driver($preparedDriver);
+                $advertisedMethod = $this->advertisedPaymentMethod(
+                    $gateway,
+                    $selectedPaymentMethod,
+                    $providerCode,
+                );
+                $payment = $this->createPaymentRecord(
+                    $order,
+                    $preparedDriver,
+                    $advertisedMethod,
+                    $actor,
+                    $guestToken,
+                );
+            }
 
             if (filled($payment->transaction_id)) {
                 return $payment;
             }
 
-            $midtrans = $payment->payment_type === 'qris'
-                ? $this->midtransService->createQris(
-                    orderId: $payment->order_id,
-                    amount: (int) $payment->total,
-                )
-                : $this->midtransService->createBankTransfer(
-                    orderId: $payment->order_id,
-                    amount: (int) $payment->total,
-                    bank: $payment->channel,
-                );
+            $driver = PaymentGatewayDriver::tryFrom((string) $payment->driver);
+            $storedPaymentMethod = $this->storedPaymentMethod($payment);
 
-            if (! ($midtrans['successful'] ?? false) || blank($midtrans['transaction_id'] ?? null)) {
-                throw new RuntimeException('Failed to create payment transaction. Please try again.');
+            if ($driver === null) {
+                throw new InvalidArgumentException("Unsupported payment gateway [{$payment->driver}].");
             }
 
-            return DB::transaction(function () use ($payment, $midtrans): Payment {
-                $lockedPayment = Payment::query()->lockForUpdate()->findOrFail($payment->getKey());
+            if ($storedPaymentMethod === null) {
+                throw new InvalidArgumentException('Unsupported payment method.');
+            }
 
-                if (filled($lockedPayment->transaction_id)) {
-                    return $lockedPayment;
-                }
+            if ($gateway === null || $preparedDriver !== $driver) {
+                $gateway = $this->paymentGatewayManager->driver($driver);
+            }
 
-                $lockedPayment->update([
-                    'transaction_id' => $midtrans['transaction_id'],
-                    'account_number' => $midtrans['account'] ?? '',
-                    'account_code' => $midtrans['code'] ?? null,
-                ]);
+            try {
+                $transaction = $gateway->paymentStatus((string) $payment->order_id);
+            } catch (PaymentTransactionNotFoundException) {
+                $transaction = $gateway->createPayment(new CreatePaymentData(
+                    orderId: (string) $payment->order_id,
+                    amount: (int) round((float) $payment->amount),
+                    paymentMethod: $storedPaymentMethod,
+                    providerCode: (string) $payment->channel,
+                    totalAmount: (int) round((float) $payment->total),
+                ));
+            }
 
-                return $lockedPayment;
-            });
+            if ($transaction->status === PaymentStatus::Pending) {
+                $this->ensureUsableDestination($transaction);
+            }
+
+            return ($this->reconcilePaymentStatus ?? new ReconcilePaymentStatusAction)->handle(
+                $payment,
+                $transaction,
+                'Payment gateway returned a mismatched payment response.',
+            );
         });
+    }
+
+    private function existingPayment(Order $order, ?User $actor, ?string $guestToken): ?Payment
+    {
+        return DB::transaction(function () use ($order, $actor, $guestToken): ?Payment {
+            $payment = Payment::query()
+                ->where('payable_type', $order->getMorphClass())
+                ->where('payable_id', $order->getKey())
+                ->lockForUpdate()
+                ->first();
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->getKey());
+
+            $this->authorize($lockedOrder, $actor, $guestToken);
+
+            return $payment;
+        }, attempts: 3);
+    }
+
+    private function advertisedPaymentMethod(
+        PaymentGateway $gateway,
+        PaymentMethod $requestedPaymentMethod,
+        ?string $requestedProviderCode,
+    ): PaymentMethodData {
+        $requestedProviderCode = trim($requestedProviderCode ?? $requestedPaymentMethod->value);
+
+        foreach ($gateway->paymentMethods() as $method) {
+            if (
+                $method instanceof PaymentMethodData
+                && $method->paymentMethod === $requestedPaymentMethod
+                && strcasecmp(trim($method->providerCode), $requestedProviderCode) === 0
+            ) {
+                return $method;
+            }
+        }
+
+        throw new InvalidArgumentException('Unsupported payment method/provider combination.');
+    }
+
+    private function createPaymentRecord(
+        Order $order,
+        PaymentGatewayDriver $driver,
+        PaymentMethodData $method,
+        ?User $actor,
+        ?string $guestToken,
+    ): Payment {
+        return DB::transaction(function () use ($order, $driver, $method, $actor, $guestToken): Payment {
+            $existingPayment = Payment::query()
+                ->where('payable_type', $order->getMorphClass())
+                ->where('payable_id', $order->getKey())
+                ->lockForUpdate()
+                ->first();
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->getKey());
+
+            $this->authorize($lockedOrder, $actor, $guestToken);
+
+            if ($existingPayment !== null) {
+                return $existingPayment;
+            }
+
+            $amount = (int) round((float) $lockedOrder->total);
+            $fee = ($this->paymentFeeCalculator ?? new PaymentFeeCalculator)
+                ->calculateCustomerFee($method, $amount);
+
+            $lockedOrder->update(['payment_fee' => $fee]);
+
+            return Payment::query()->create([
+                'driver' => $driver->value,
+                'payable_type' => $lockedOrder->getMorphClass(),
+                'payable_id' => $lockedOrder->getKey(),
+                'order_id' => (string) Str::uuid(),
+                'transaction_id' => null,
+                'payment_type' => $method->type,
+                'account_number' => '',
+                'channel' => $method->providerCode,
+                'expired_at' => now()->addDay(),
+                'amount' => $amount,
+                'fee' => $fee,
+                'total' => $amount + $fee,
+            ]);
+        }, attempts: 3);
+    }
+
+    private function storedPaymentMethod(Payment $payment): ?PaymentMethod
+    {
+        $channel = trim((string) $payment->channel);
+        $paymentMethod = PaymentMethod::tryFrom(strtolower($channel))
+            ?? PaymentMethod::fromProviderCode($channel);
+
+        if ($paymentMethod !== null) {
+            return $paymentMethod;
+        }
+
+        if (
+            $payment->driver === PaymentGatewayDriver::Paywuz->value
+            && in_array(strtoupper($channel), ['MANDIRIVA', 'PERMATAVA'], true)
+        ) {
+            return PaymentMethod::Va;
+        }
+
+        return null;
+    }
+
+    private function ensureUsableDestination(PaymentTransactionData $transaction): void
+    {
+        if (blank($transaction->paymentNumber) && blank($transaction->paymentUrl)) {
+            throw new UnexpectedValueException('Payment gateway returned no usable payment destination.');
+        }
     }
 
     private function authorize(Order $order, ?User $actor, ?string $guestToken): void

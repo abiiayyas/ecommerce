@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class MidtransService
 {
@@ -68,11 +70,12 @@ class MidtransService
 
         // Response
         $response = Http::withBasicAuth((string) $this->serverKey, '')
-            ->connectTimeout(5)
-            ->timeout(15)
-            ->retry(3, 200, throw: false)
+            ->connectTimeout((float) config('midtrans.connect_timeout', 5))
+            ->timeout((float) config('midtrans.timeout', 15))
+            ->retry((int) config('midtrans.retries', 3), 200, throw: false)
             ->post($this->baseUrl.'/v2/charge', $params);
         $responseJson = $response->json();
+        $responseJson = is_array($responseJson) ? $responseJson : [];
 
         return [
             'successful' => $response->successful(),
@@ -81,6 +84,7 @@ class MidtransService
             'code' => $responseJson['biller_code'] ?? null,
             'redirect_url' => $responseJson['redirect_url'] ?? null,
             'message' => $responseJson['message'] ?? 'Failed to create bank transfer',
+            'data' => $responseJson,
         ];
     }
 
@@ -114,11 +118,12 @@ class MidtransService
 
         // Response
         $response = Http::withBasicAuth((string) $this->serverKey, '')
-            ->connectTimeout(5)
-            ->timeout(15)
-            ->retry(3, 200, throw: false)
+            ->connectTimeout((float) config('midtrans.connect_timeout', 5))
+            ->timeout((float) config('midtrans.timeout', 15))
+            ->retry((int) config('midtrans.retries', 3), 200, throw: false)
             ->post($this->baseUrl.'/v2/charge', $params);
         $responseJson = $response->json();
+        $responseJson = is_array($responseJson) ? $responseJson : [];
 
         return [
             'successful' => $response->successful(),
@@ -127,6 +132,7 @@ class MidtransService
             'code' => null,
             'redirect_url' => $responseJson['redirect_url'] ?? null,
             'message' => $responseJson['message'] ?? 'Failed to create qris',
+            'data' => $responseJson,
         ];
     }
 
@@ -166,11 +172,12 @@ class MidtransService
 
         // Response
         $response = Http::withBasicAuth((string) $this->serverKey, '')
-            ->connectTimeout(5)
-            ->timeout(15)
-            ->retry(3, 200, throw: false)
+            ->connectTimeout((float) config('midtrans.connect_timeout', 5))
+            ->timeout((float) config('midtrans.timeout', 15))
+            ->retry((int) config('midtrans.retries', 3), 200, throw: false)
             ->post($this->baseUrl.'/v2/charge', $params);
         $responseJson = $response->json();
+        $responseJson = is_array($responseJson) ? $responseJson : [];
 
         return [
             'successful' => $response->successful(),
@@ -179,6 +186,31 @@ class MidtransService
             'code' => null,
             'redirect_url' => $responseJson['redirect_url'] ?? null,
             'message' => $responseJson['message'] ?? 'Failed to create card transaction',
+            'data' => $responseJson,
+        ];
+    }
+
+    public function paymentStatus(string $orderId): array
+    {
+        $response = Http::withBasicAuth((string) $this->serverKey, '')
+            ->connectTimeout((float) config('midtrans.connect_timeout', 5))
+            ->timeout((float) config('midtrans.timeout', 15))
+            ->retry(
+                (int) config('midtrans.retries', 3),
+                200,
+                fn (Throwable $exception): bool => ! ($exception instanceof RequestException)
+                    || $exception->response->serverError(),
+                throw: false,
+            )
+            ->get($this->baseUrl.'/v2/'.rawurlencode($orderId).'/status');
+        $responseJson = $response->json();
+        $responseJson = is_array($responseJson) ? $responseJson : [];
+
+        return [
+            'successful' => $response->successful(),
+            'http_status' => $response->status(),
+            'message' => $responseJson['status_message'] ?? 'Failed to fetch transaction status',
+            'data' => $responseJson,
         ];
     }
 

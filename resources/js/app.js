@@ -99,4 +99,13 @@ Livewire.on("delete-localstorage", (params) => {
     localStorage.removeItem(params.key);
 });
 
+Livewire.on("buy-now", (params) => {
+    Alpine.store("cart").upsert(params.item);
+    window.location.assign(params.checkoutUrl);
+});
+
+Livewire.on("remove-cart-items", (params) => {
+    Alpine.store("cart").removeMany(params.ids);
+});
+
 Livewire.start();

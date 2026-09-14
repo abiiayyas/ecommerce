@@ -2,22 +2,22 @@
 
 namespace App\Http\Controllers\Api\V1\Callback;
 
-use App\Actions\Api\V1\Callback\HandleMidtransCallbackAction;
+use App\Actions\Api\V1\Callback\HandlePaywuzCallbackAction;
 use App\Http\Controllers\Controller;
 use App\Traits\WithReturnResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class MidtransController extends Controller
+final class PaywuzController extends Controller
 {
     use WithReturnResponse;
 
-    public function callback(Request $request, HandleMidtransCallbackAction $action): JsonResponse
+    public function callback(Request $request, HandlePaywuzCallbackAction $action): JsonResponse
     {
         try {
-            $action->handle($request->all());
+            $action->handle($request);
         } catch (\Throwable $exception) {
-            if (in_array($exception->getCode(), [400, 403, 404], true)) {
+            if (in_array($exception->getCode(), [400, 401, 403, 404], true)) {
                 return $this->responseWithError($exception->getMessage(), $exception->getCode());
             }
 

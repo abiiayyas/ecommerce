@@ -5,12 +5,54 @@
         totalShippingCost: $wire.entangle('totalShippingCost'),
         insuranceFee: $wire.entangle('insuranceFee'),
         applicationFee: $wire.entangle('applicationFee'),
+        maximumQuantity: 100,
         ready: false,
+        submitting: false,
+        selectedIds: @js($this->getSelectedIdsArrayProperty()).map(Number),
+        checkoutItemsSnapshot: [],
+
+        normalizeQuantity(quantity) {
+            const parsedQuantity = typeof quantity === 'number'
+                ? quantity
+                : typeof quantity === 'string' && quantity.trim() !== ''
+                    ? Number(quantity)
+                    : Number.NaN;
+
+            return Number.isFinite(parsedQuantity)
+                ? Math.min(this.maximumQuantity, Math.max(1, Math.trunc(parsedQuantity)))
+                : 1;
+        },
+
+        captureCheckoutItems(cartItems) {
+            const selectedIds = new Set(this.selectedIds);
+            const itemsById = new Map();
+
+            (Array.isArray(cartItems) ? cartItems : []).forEach(item => {
+                const productFlatId = Number(item?.id);
+
+                if (!Number.isSafeInteger(productFlatId) || !selectedIds.has(productFlatId)) return;
+
+                itemsById.set(productFlatId, {
+                    ...item,
+                    id: productFlatId,
+                    qty: this.normalizeQuantity(item.qty),
+                });
+            });
+
+            return Array.from(itemsById.values());
+        },
 
         get checkoutItems() {
-            const ids = @js($this->getSelectedIdsArrayProperty());
-            if (ids.length === 0) return $store.cart.items;
-            return $store.cart.items.filter(i => ids.includes(i.id));
+            return this.checkoutItemsSnapshot;
+        },
+
+        shopItems(shopItemQuantities) {
+            return this.checkoutItemsSnapshot
+                .filter(item => Object.prototype.hasOwnProperty.call(shopItemQuantities, item.id))
+                .map(item => ({
+                    ...item,
+                    qty: this.normalizeQuantity(shopItemQuantities[item.id]),
+                }));
         },
 
         get subtotal() {
@@ -26,29 +68,38 @@
         },
 
         async init() {
-            await $wire.resolveShopGroups($store.cart.items);
+            this.checkoutItemsSnapshot = this.captureCheckoutItems($store.cart.items);
+            await $wire.resolveShopGroups(this.checkoutItemsSnapshot);
             this.ready = true;
         },
 
         async submitOrder() {
-            let guestData = {};
-            if (!{{ auth()->check() ? 'true' : 'false' }}) {
-                const localStorageData = JSON.parse(localStorage.getItem(this.lsKey) || '{}');
-                guestData = {
-                    contact_name: localStorageData.contact_name,
-                    contact_phone: localStorageData.contact_phone,
-                    email: localStorageData.email,
-                    address: localStorageData.address,
-                    note: localStorageData.note,
-                    postal_code: localStorageData.postal_code,
-                    area_string: localStorageData.area_string,
-                    biteship_area_id: localStorageData.biteship_area_id,
-                    latitude: localStorageData.latitude,
-                    longitude: localStorageData.longitude,
-                }
-            }
+            if (this.submitting) return;
 
-            await $wire.submit(guestData);
+            this.submitting = true;
+
+            try {
+                let guestData = {};
+                if (!{{ auth()->check() ? 'true' : 'false' }}) {
+                    const localStorageData = JSON.parse(localStorage.getItem(this.lsKey) || '{}');
+                    guestData = {
+                        contact_name: localStorageData.contact_name,
+                        contact_phone: localStorageData.contact_phone,
+                        email: localStorageData.email,
+                        address: localStorageData.address,
+                        note: localStorageData.note,
+                        postal_code: localStorageData.postal_code,
+                        area_string: localStorageData.area_string,
+                        biteship_area_id: localStorageData.biteship_area_id,
+                        latitude: localStorageData.latitude,
+                        longitude: localStorageData.longitude,
+                    }
+                }
+
+                await $wire.submit(guestData);
+            } finally {
+                this.submitting = false;
+            }
         }
     }"
 >
@@ -78,11 +129,6 @@
                         <div
                             wire:key="shop-group-{{ $group['shop_id'] }}"
                             class="bg-white border rounded-2xl shadow-sm overflow-hidden"
-                            x-data="{
-                                get shopItems() {
-                                    return $store.cart.items.filter(i => i.shop_id == {{ $group['shop_id'] }});
-                                }
-                            }"
                         >
                             <!-- Shop header -->
                             <div class="flex items-center gap-2 bg-gray-50 px-6 py-3 border-b">
@@ -95,10 +141,10 @@
                             <div class="p-6">
                                 <!-- Items -->
                                 <div class="space-y-4 mb-4">
-                                    <template x-for="item in shopItems" :key="item.id">
+                                    <template x-for="item in shopItems(@js($group['items']))" :key="item.id">
                                         <div class="flex gap-4">
                                             <div class="shrink-0">
-                                                <img :src="item.image" alt="Product" class="w-16 h-16 rounded-xl object-cover border" x-show="item.image != ''" />
+                                                <img :src="item.image" x-bind:alt="item.name" class="w-16 h-16 rounded-xl object-cover border" x-show="item.image != ''" />
                                                 <div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border" x-show="item.image == ''">
                                                     <flux:icon.photo class="w-6 h-6 text-gray-400" />
                                                 </div>
@@ -172,7 +218,7 @@
                         <flux:button
                             variant="primary"
                             class="w-full"
-                            x-bind:disabled="checkoutItems.length === 0 || {{ count($shopGroups) > 0 && count($shopRates) < count($shopGroups) ? 'true' : 'false' }}"
+                            x-bind:disabled="submitting || checkoutItems.length === 0 || {{ count($shopGroups) > 0 && count($shopRates) < count($shopGroups) ? 'true' : 'false' }}"
                             x-on:click="submitOrder"
                         >
                             Pilih Pembayaran

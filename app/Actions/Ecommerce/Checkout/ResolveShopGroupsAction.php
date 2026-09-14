@@ -17,9 +17,7 @@ class ResolveShopGroupsAction
             ->filter(fn (mixed $item): bool => is_array($item) && isset($item['id'], $item['qty']))
             ->mapWithKeys(fn (array $item): array => [(int) $item['id'] => min(100, max(1, (int) $item['qty']))]);
 
-        if ($selectedIds !== []) {
-            $requestedQuantities = $requestedQuantities->only($selectedIds);
-        }
+        $requestedQuantities = $requestedQuantities->only($selectedIds);
 
         if ($requestedQuantities->isEmpty()) {
             return [];

@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\Payments\PaymentGateway;
 use App\Models\User;
+use App\Services\Payments\PaymentGatewayManager;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -16,7 +18,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            PaymentGateway::class,
+            fn (): PaymentGateway => $this->app->make(PaymentGatewayManager::class)->driver(),
+        );
     }
 
     /**

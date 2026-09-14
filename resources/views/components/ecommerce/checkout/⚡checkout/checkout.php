@@ -13,6 +13,8 @@ use Sqids\Sqids;
 
 new class extends Component
 {
+    private const MAX_PURCHASABLE_QUANTITY = 100;
+
     // CONSTANTS
     #[Locked]
     public $insuranceFee = 2500;
@@ -21,7 +23,8 @@ new class extends Component
     public $applicationFee = 1000;
 
     // Selected product flat ids to checkout
-    public $selectedIds;
+    #[Locked]
+    public mixed $selectedIds = '';
 
     /**
      * Resolved per-shop groups populated by resolveShopGroups().
@@ -49,14 +52,17 @@ new class extends Component
     /**
      * Parsed array of selected IDs.
      */
-    public function getSelectedIdsArrayProperty()
+    public function getSelectedIdsArrayProperty(): array
     {
-        // Decode selectedIds using Sqids
-        $sqids = new Sqids;
-        $selectedIds = blank($this->selectedIds) ? [] : $sqids->decode($this->selectedIds);
+        if (! is_string($this->selectedIds) || blank($this->selectedIds)) {
+            return [];
+        }
+
+        $selectedIds = (new Sqids)->decode($this->selectedIds);
 
         return array_values(array_filter(
-            array_map('intval', $selectedIds)
+            array_unique(array_map('intval', $selectedIds)),
+            fn (int $selectedId): bool => $selectedId > 0,
         ));
     }
 
@@ -67,11 +73,13 @@ new class extends Component
      *
      * @param  array<int, array<string, mixed>>  $cartItems
      */
-    public function resolveShopGroups(array $cartItems, ResolveShopGroupsAction $resolveShopGroupsAction)
+    public function resolveShopGroups(array $cartItems, ResolveShopGroupsAction $resolveShopGroupsAction): void
     {
         $selectedIds = $this->getSelectedIdsArrayProperty();
 
-        $this->shopGroups = $resolveShopGroupsAction->handle($cartItems, $selectedIds);
+        $this->shopGroups = $this->normalizeShopGroups(
+            $resolveShopGroupsAction->handle($this->normalizeCartItems($cartItems), $selectedIds),
+        );
     }
 
     /**
@@ -106,6 +114,8 @@ new class extends Component
      */
     public function submit(?array $guestData, GetShippingRatesAction $getShippingRatesAction, StoreCheckoutAction $storeCheckoutAction)
     {
+        $this->shopGroups = $this->normalizeShopGroups($this->shopGroups);
+
         $location = auth()->check()
             ? auth()->user()->locations()->whereKey($this->selectedLocationId)->first()
             : null;
@@ -157,7 +167,7 @@ new class extends Component
             'shopGroups' => 'required|array',
             'shopGroups.*.shop_id' => 'required|integer|exists:shops,id',
             'shopGroups.*.items' => 'required|array',
-            'shopGroups.*.items.*' => 'required|integer|min:1', // value is qty, key is product_flat_id
+            'shopGroups.*.items.*' => 'required|integer|min:1|max:'.self::MAX_PURCHASABLE_QUANTITY, // value is qty, key is product_flat_id
         ]);
 
         // Validate that each shop in shopGroups has a corresponding rate in shopRates
@@ -205,11 +215,14 @@ new class extends Component
                     items: $group['items'],
                 );
             } catch (Exception $e) {
-                // Log the error with additional context for debugging
-                Log::error('Failed to get shipping rates for shop '.$group['shop_name'].': '.$e->getMessage(), [
-                    'shop_id' => $shopId,
-                    'destination_area_id' => $destinationAreaId,
-                    'items' => $group['items'],
+                Log::error('Failed to get shipping rates.', [
+                    'shop_id' => (int) $shopId,
+                    'product_flat_ids' => collect(array_keys($group['items']))
+                        ->map(fn (int|string $productFlatId): int => (int) $productFlatId)
+                        ->sort()
+                        ->values()
+                        ->all(),
+                    'exception' => $e::class,
                 ]);
                 $this->dispatch('toast',
                     type: 'error',
@@ -258,6 +271,12 @@ new class extends Component
 
         try {
             $checkout = $storeCheckoutAction->handle($submitedData);
+            $purchasedIds = collect($submitedShopGroups)
+                ->flatMap(fn (array $shopGroup): array => array_keys($shopGroup['items']))
+                ->map(fn (int|string $productFlatId): int => (int) $productFlatId)
+                ->unique()
+                ->values()
+                ->all();
 
             // Dispatch success message
             $this->dispatch('toast',
@@ -265,8 +284,11 @@ new class extends Component
                 message: 'Order berhasil dibuat. Silakan lanjutkan ke pembayaran.',
             );
 
-            // Dispatch delete localstorage event to clear the cart
-            $this->dispatch('delete-localstorage', key: 'cart');
+            $this->dispatch('remove-cart-items', ids: $purchasedIds);
+
+            if (! auth()->check()) {
+                $this->dispatch('delete-localstorage', key: 'checkout_guest_address');
+            }
 
             // Redirect to order detail page with the order reference
             return $this->redirectRoute('payment.show', [
@@ -274,8 +296,22 @@ new class extends Component
                 ...$checkout->guestRouteParameters(),
             ], navigate: true);
         } catch (Exception $e) {
-            // Log the error with additional context for debugging
-            Log::error('Failed to store order: '.$e->getMessage(), $submitedData);
+            Log::error('Failed to store order.', [
+                'checkout_actor' => auth()->check() ? 'user' : 'guest',
+                'shop_ids' => collect(array_keys($submitedShopGroups))
+                    ->map(fn (int|string $shopId): int => (int) $shopId)
+                    ->sort()
+                    ->values()
+                    ->all(),
+                'product_flat_ids' => collect($submitedShopGroups)
+                    ->flatMap(fn (array $shopGroup): array => array_keys($shopGroup['items']))
+                    ->map(fn (int|string $productFlatId): int => (int) $productFlatId)
+                    ->unique()
+                    ->sort()
+                    ->values()
+                    ->all(),
+                'exception' => $e::class,
+            ]);
 
             $this->dispatch('toast',
                 type: 'error',
@@ -284,5 +320,45 @@ new class extends Component
 
             return;
         }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $shopGroups
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeShopGroups(array $shopGroups): array
+    {
+        foreach ($shopGroups as &$group) {
+            foreach ($group['items'] ?? [] as $productFlatId => $quantity) {
+                $group['items'][$productFlatId] = $this->normalizeQuantity($quantity);
+            }
+        }
+        unset($group);
+
+        return $shopGroups;
+    }
+
+    /**
+     * @param  array<int, mixed>  $cartItems
+     * @return array<int, mixed>
+     */
+    private function normalizeCartItems(array $cartItems): array
+    {
+        return array_map(function (mixed $cartItem): mixed {
+            if (! is_array($cartItem) || ! isset($cartItem['qty'])) {
+                return $cartItem;
+            }
+
+            $cartItem['qty'] = $this->normalizeQuantity($cartItem['qty']);
+
+            return $cartItem;
+        }, $cartItems);
+    }
+
+    private function normalizeQuantity(mixed $quantity): int
+    {
+        $normalizedQuantity = is_numeric($quantity) ? (int) $quantity : 1;
+
+        return min(self::MAX_PURCHASABLE_QUANTITY, max(1, $normalizedQuantity));
     }
 };

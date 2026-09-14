@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 96" role="img" aria-labelledby="title">
+  <title id="title">Bank Syariah Indonesia</title>
+  <rect width="320" height="96" rx="12" fill="#fff"/>
+  <path fill="#00a39b" d="M26 25h36l18 23-18 23H26l18-23z"/>
+  <path fill="#f3b51b" d="m62 25 18 23-18 23-9-12 9-11-9-11z"/>
+  <text x="101" y="60" fill="#153f49" font-family="Arial, sans-serif" font-size="38" font-weight="700">BSI</text>
+  <text x="174" y="44" fill="#47636a" font-family="Arial, sans-serif" font-size="13" font-weight="600">BANK SYARIAH</text>
+  <text x="174" y="62" fill="#47636a" font-family="Arial, sans-serif" font-size="13" font-weight="600">INDONESIA</text>
+</svg>

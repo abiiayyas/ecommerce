@@ -2,14 +2,21 @@
 <div>
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-8" x-data="{
         activeTab: 'description',
-        activeFlatProduct: {{ $product->productFlats->first()->id }},
+        activeFlatProduct: @js($product->productFlats->first()->id),
         activeImage: 0,
+        qty: 1,
+        maximumQuantities: {
+            @foreach ($product->productFlats as $flat)
+                @js($flat->id): @js($flat->is_unlimited_stock ? 100 : min(100, max(1, (int) $flat->stock))),
+            @endforeach
+        },
         images: [
             @foreach ($product->productFlats as $flat)
                 @foreach ($flat->getMedia('*') as $media)
                     {
-                        id: '{{ $flat->id }}',
-                        url: '{{ $media->getUrl() }}',
+                        id: @js($flat->id),
+                        url: @js($media->getUrl()),
+                        alt: @js('Gambar '.$flat->name),
                     },
                 @endforeach
             @endforeach
@@ -20,8 +27,34 @@
                 this.activeImage = index;
             }
         },
-        // Cart functionality
-        qty: 1,
+        maximumQuantityFor(flatId) {
+            return this.maximumQuantities[flatId] ?? 1;
+        },
+        normalizeQuantity(quantity, maximumQuantity = this.maximumQuantityFor(this.activeFlatProduct)) {
+            const parsedQuantity = typeof quantity === 'number'
+                ? quantity
+                : typeof quantity === 'string' && quantity.trim() !== ''
+                    ? Number(quantity)
+                    : Number.NaN;
+            const parsedMaximum = Number(maximumQuantity);
+            const normalizedMaximum = Number.isFinite(parsedMaximum)
+                ? Math.min(100, Math.max(1, Math.trunc(parsedMaximum)))
+                : 1;
+
+            return Number.isFinite(parsedQuantity)
+                ? Math.min(normalizedMaximum, Math.max(1, Math.trunc(parsedQuantity)))
+                : 1;
+        },
+        selectFlat(flatId, imageIndex = null) {
+            this.activeFlatProduct = flatId;
+            this.qty = this.normalizeQuantity(this.qty, this.maximumQuantityFor(flatId));
+
+            if (imageIndex === null) {
+                this.setActiveImageBasedOnFlat(flatId);
+            } else {
+                this.activeImage = imageIndex;
+            }
+        },
     }">
         <div class="mb-4">
             <a href="{{ route('explore.index') }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-600 transition font-medium" wire:navigate>
@@ -34,16 +67,21 @@
             <!-- Left: Images -->
             <div class="w-full lg:w-[30%] flex flex-col gap-4">
                 <div class="aspect-square rounded-2xl overflow-hidden border">
-                    <img :src="images[activeImage].url" alt="Product" class="w-full h-full object-cover" lazy>
+                    <img :src="images[activeImage].url" x-bind:alt="images[activeImage].alt" class="w-full h-full object-cover" lazy>
                 </div>
                 <div class="w-full max-h-20 overflow-hidden">
                     <div class="flex gap-2 overflow-x-auto pb-2 hide-scrollbar flex-nowrap items-center overscroll-contain">
                         <template x-for="(img, index) in images" :key="index">
-                            <div @click="activeImage = index; activeFlatProduct = img.id"
+                            <button
+                                data-product-thumbnail
+                                type="button"
+                                @click="selectFlat(img.id, index)"
+                                x-bind:aria-label="'Pilih gambar produk ' + (index + 1)"
+                                x-bind:aria-pressed="activeImage === index"
                                 :class="{'border-gray-500 ring-2 ring-gray-500': activeImage == index, 'border-gray-200 opacity-70': activeImage !== index}"
                                 class="w-16 h-16 rounded-xl overflow-hidden border cursor-pointer hover:opacity-100 transition shrink-0">
-                                <img :src="img.url" alt="Thumbnail" class="w-full h-full object-cover" lazy>
-                            </div>
+                                <img :src="img.url" alt="" aria-hidden="true" class="w-full h-full object-cover" lazy>
+                            </button>
                         </template>
                     </div>
                 </div>
@@ -52,7 +90,7 @@
             <!-- Middle: Product Info -->
             <div class="w-full lg:w-[45%] flex flex-col gap-6">
                 @foreach ($product->productFlats as $flat)
-                    <div x-show="activeFlatProduct == {{ $flat->id }}" x-cloak>
+                    <div x-show="activeFlatProduct == @js($flat->id)" x-cloak>
                         <h1 class="text-2xl font-bold text-gray-900 leading-tight mb-2">
                             {{ $flat->name }}
                         </h1>
@@ -94,11 +132,14 @@
                     <div class="flex gap-2 flex-wrap">
                         @foreach ($variants as $variant)
                             <button
+                                data-product-variant
+                                type="button"
+                                x-bind:aria-pressed="activeFlatProduct == @js($variant['product_flat_id'])"
                                 :class="{
-                                    'border-gray-500 bg-gray-50 text-gray-700': activeFlatProduct == {{ $variant['product_flat_id'] }},
-                                    'border-gray-200 text-gray-600 hover:border-gray-500': activeFlatProduct != {{ $variant['product_flat_id'] }}
+                                    'border-gray-500 bg-gray-50 text-gray-700': activeFlatProduct == @js($variant['product_flat_id']),
+                                    'border-gray-200 text-gray-600 hover:border-gray-500': activeFlatProduct != @js($variant['product_flat_id'])
                                 }"
-                                @click="activeFlatProduct = {{ $variant['product_flat_id'] }}; setActiveImageBasedOnFlat({{ $variant['product_flat_id'] }})"
+                                @click="selectFlat(@js($variant['product_flat_id']))"
                                 class="border px-4 py-1.5 rounded-xl text-sm font-medium transition">
                                 {{ $variant['label'] }}
                             </button>
@@ -110,17 +151,17 @@
                 <div>
                     <div class="border-b mb-4">
                         <nav class="flex gap-6 text-sm font-bold">
-                            <button @click="activeTab = 'description'" :class="{'text-gray-600 border-b-2 border-gray-600 pb-3': activeTab == 'description', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'description'}">Detail</button>
-                            <button @click="activeTab = 'specification'" :class="{'text-gray-600 border-b-2 border-gray-600 pb-3': activeTab == 'specification', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'specification'}">Spesifikasi</button>
+                            <button type="button" @click="activeTab = 'description'" :class="{'text-gray-600 border-b-2 border-gray-600 pb-3': activeTab == 'description', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'description'}">Detail</button>
+                            <button type="button" @click="activeTab = 'specification'" :class="{'text-gray-600 border-b-2 border-gray-600 pb-3': activeTab == 'specification', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'specification'}">Spesifikasi</button>
                         </nav>
                     </div>
 
                     <!-- Tab Content -->
                     <div class="text-sm text-gray-700 leading-relaxed mb-6">
                         @foreach ($product->productFlats as $flat)
-                            <div x-show="activeFlatProduct == {{ $flat->id }}" x-cloak>
-                                <div x-show="activeTab == 'description'" x-cloak>
-                                    {!! $flat->description !!}
+                            <div x-show="activeFlatProduct == @js($flat->id)" x-cloak>
+                                <div x-show="activeTab == 'description'" x-cloak class="whitespace-pre-line">
+                                    {{ $flat->description }}
                                 </div>
                                 <div x-show="activeTab == 'specification'" x-cloak class="flex flex-col gap-3">
                                     <div class="flex">
@@ -175,13 +216,19 @@
             <!-- Right: Action Box -->
             <div class="w-full lg:w-[25%]">
                 @foreach ($product->productFlats as $flat)
-                    <div class="border rounded-2xl p-4 shadow-sm sticky top-24 bg-white" x-show="activeFlatProduct == {{ $flat->id }}" x-cloak>
+                    @php
+                        $maximumQuantity = $flat->is_unlimited_stock
+                            ? 100
+                            : min(100, max(1, (int) $flat->stock));
+                    @endphp
+                    <div class="border rounded-2xl p-4 shadow-sm sticky top-24 bg-white" x-show="activeFlatProduct == @js($flat->id)" x-cloak>
                         <h3 class="font-bold text-gray-900 mb-4 text-base">Atur jumlah dan catatan</h3>
                         <div class="flex items-center gap-3 mb-5">
                             <div class="flex items-center border rounded-xl overflow-hidden">
-                                <button @click="qty = Math.max(1, qty - 1)" class="px-3 py-1.5 text-gray-500 hover:bg-gray-100 font-bold transition">-</button>
-                                <input type="number" x-model="qty" class="w-12 text-center text-gray-900 font-medium border-0 focus:ring-0 p-0 text-sm" />
-                                <button @click="qty++" class="px-3 py-1.5 text-gray-600 hover:bg-gray-50 font-bold transition">+</button>
+                                <label for="quantity-{{ $flat->id }}" class="sr-only">Jumlah {{ $flat->name }}</label>
+                                <button data-quantity-decrement type="button" aria-label="Kurangi jumlah {{ $flat->name }}" @click="qty = normalizeQuantity(qty - 1, {{ $maximumQuantity }})" class="px-3 py-1.5 text-gray-500 hover:bg-gray-100 font-bold transition">-</button>
+                                <input id="quantity-{{ $flat->id }}" type="number" min="1" max="{{ $maximumQuantity }}" x-model.number="qty" x-on:input="qty = normalizeQuantity($event.target.value, {{ $maximumQuantity }})" class="w-12 text-center text-gray-900 font-medium border-0 focus:ring-0 p-0 text-sm" />
+                                <button data-quantity-increment type="button" aria-label="Tambah jumlah {{ $flat->name }}" @click="qty = normalizeQuantity(qty + 1, {{ $maximumQuantity }})" class="px-3 py-1.5 text-gray-600 hover:bg-gray-50 font-bold transition">+</button>
                             </div>
                             @if ( !$flat->is_unlimited_stock)
                                 <span class="text-sm text-gray-500">Stok Total:
@@ -194,7 +241,7 @@
 
                         <div class="flex items-center justify-between text-gray-500 text-sm mb-6">
                             <span>Subtotal</span>
-                            <span class="font-bold text-gray-900 text-xl" x-text="'Rp' + window.numberToCurrency({{ $flat->price }} * qty)"></span>
+                            <span class="font-bold text-gray-900 text-xl" x-text="'Rp' + window.numberToCurrency(@js($flat->price) * normalizeQuantity(qty, {{ $maximumQuantity }}))"></span>
                         </div>
 
                         <div class="flex flex-col gap-2">
@@ -202,18 +249,23 @@
                                 variant="primary"
                                 type="button"
                                 class="cursor-pointer"
-                                @click="$store.cart.add({
-                                    id: {{ $flat->id }},
-                                    shop_id: {{ $product->shop->id }},
-                                    shop_name: '{{ $product->shop->name }}',
-                                    name: '{{ $flat->name }}',
-                                    price: {{ $flat->price }},
-                                    image: '{{ $flat->getFirstMediaUrl('image_slot_0') }}',
+                                @click="qty = normalizeQuantity(qty, {{ $maximumQuantity }}); $store.cart.add({
+                                    id: @js($flat->id),
+                                    shop_id: @js($product->shop->id),
+                                    shop_name: @js($product->shop->name),
+                                    name: @js($flat->name),
+                                    price: @js($flat->price),
+                                    image: @js($flat->getFirstMediaUrl('image_slot_0')),
                                     qty: qty,
                                 }); $flux.modal('cartModal').show()">
                                 + Keranjang
                             </flux:button>
-                            <flux:button href="{{ route('checkout') }}" class="cursor-pointer" wire:navigate>
+                            <flux:button
+                                type="button"
+                                class="cursor-pointer"
+                                x-on:click="qty = normalizeQuantity(qty, {{ $maximumQuantity }}); $wire.buyNow(@js($flat->id), qty)"
+                                :disabled="! $flat->is_unlimited_stock && $flat->stock < 1"
+                            >
                                 Beli Sekarang
                             </flux:button>
                         </div>
@@ -229,7 +281,7 @@
                                 <flux:icon.heart class="w-5 h-5"/> Wishlist
                             </button>
                             <div class="w-px h-4 bg-gray-300"></div> --}}
-                            <button class="flex items-center gap-1.5 hover:text-gray-600 transition cursor-pointer" @click="
+                            <button type="button" class="flex items-center gap-1.5 hover:text-gray-600 transition cursor-pointer" @click="
                                 navigator.clipboard.writeText(window.location.href).then(() => {
                                     $wire.dispatch('toast', {
                                         type: 'success',
