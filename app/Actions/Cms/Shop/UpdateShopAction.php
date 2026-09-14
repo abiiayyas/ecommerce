@@ -4,6 +4,7 @@ namespace App\Actions\Cms\Shop;
 
 use App\Actions\Ecommerce\Location\UpdateLocationAction;
 use App\Models\Shop\Shop;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -19,6 +20,14 @@ class UpdateShopAction
     public function handle(Shop $shop, array $data): Shop
     {
         Gate::authorize('update'.Shop::class);
+
+        $user = auth()->user();
+        abort_unless($user instanceof User, 403);
+
+        $shop = Shop::query()
+            ->accessibleTo($user)
+            ->with('location')
+            ->findOrFail($shop->getKey());
 
         return DB::transaction(function () use ($shop, $data) {
             $shop->update([
