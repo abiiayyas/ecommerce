@@ -85,17 +85,13 @@ class CreatePaymentAction
             $gateway = $this->paymentGatewayManager->driver($driver);
         }
 
-        try {
-            $transaction = $gateway->paymentStatus((string) $payment->order_id);
-        } catch (PaymentTransactionNotFoundException) {
-            $transaction = $gateway->createPayment(new CreatePaymentData(
-                orderId: (string) $payment->order_id,
-                amount: (int) round((float) $payment->amount),
-                paymentMethod: $storedPaymentMethod,
-                providerCode: (string) $payment->channel,
-                totalAmount: (int) round((float) $payment->total),
-            ));
-        }
+        $transaction = $gateway->createPayment(new CreatePaymentData(
+            orderId: (string) $payment->order_id,
+            amount: (int) round((float) $payment->amount),
+            paymentMethod: $storedPaymentMethod,
+            providerCode: (string) $payment->channel,
+            totalAmount: (int) round((float) $payment->total),
+        ));
 
         if ($transaction->status === PaymentStatus::Pending) {
             $this->ensureUsableDestination($transaction);
