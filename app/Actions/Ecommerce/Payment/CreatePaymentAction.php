@@ -45,69 +45,67 @@ class CreatePaymentAction
             throw new InvalidArgumentException('Unsupported payment method.');
         }
 
-        return Cache::lock("payment:create:order:{$order->getKey()}", 90)->block(10, function () use ($order, $selectedPaymentMethod, $actor, $guestToken, $providerCode): Payment {
-            $payment = $this->existingPayment($order, $actor, $guestToken);
-            $preparedDriver = null;
-            $gateway = null;
+        $payment = $this->existingPayment($order, $actor, $guestToken);
+        $preparedDriver = null;
+        $gateway = null;
 
-            if ($payment === null) {
-                $preparedDriver = $this->paymentGatewayManager->defaultDriver();
-                $gateway = $this->paymentGatewayManager->driver($preparedDriver);
-                $advertisedMethod = $this->advertisedPaymentMethod(
-                    $gateway,
-                    $selectedPaymentMethod,
-                    $providerCode,
-                );
-                $payment = $this->createPaymentRecord(
-                    $order,
-                    $preparedDriver,
-                    $advertisedMethod,
-                    $actor,
-                    $guestToken,
-                );
-            }
-
-            if (filled($payment->transaction_id)) {
-                return $payment;
-            }
-
-            $driver = PaymentGatewayDriver::tryFrom((string) $payment->driver);
-            $storedPaymentMethod = $this->storedPaymentMethod($payment);
-
-            if ($driver === null) {
-                throw new InvalidArgumentException("Unsupported payment gateway [{$payment->driver}].");
-            }
-
-            if ($storedPaymentMethod === null) {
-                throw new InvalidArgumentException('Unsupported payment method.');
-            }
-
-            if ($gateway === null || $preparedDriver !== $driver) {
-                $gateway = $this->paymentGatewayManager->driver($driver);
-            }
-
-            try {
-                $transaction = $gateway->paymentStatus((string) $payment->order_id);
-            } catch (PaymentTransactionNotFoundException) {
-                $transaction = $gateway->createPayment(new CreatePaymentData(
-                    orderId: (string) $payment->order_id,
-                    amount: (int) round((float) $payment->amount),
-                    paymentMethod: $storedPaymentMethod,
-                    providerCode: (string) $payment->channel,
-                    totalAmount: (int) round((float) $payment->total),
-                ));
-            }
-
-            if ($transaction->status === PaymentStatus::Pending) {
-                $this->ensureUsableDestination($transaction);
-            }
-
-            return ($this->reconcilePaymentStatus ?? new ReconcilePaymentStatusAction)->handle(
-                $payment,
-                $transaction,
-                'Payment gateway returned a mismatched payment response.',
+        if ($payment === null) {
+            $preparedDriver = $this->paymentGatewayManager->defaultDriver();
+            $gateway = $this->paymentGatewayManager->driver($preparedDriver);
+            $advertisedMethod = $this->advertisedPaymentMethod(
+                $gateway,
+                $selectedPaymentMethod,
+                $providerCode,
             );
-        });
+            $payment = $this->createPaymentRecord(
+                $order,
+                $preparedDriver,
+                $advertisedMethod,
+                $actor,
+                $guestToken,
+            );
+        }
+
+        if (filled($payment->transaction_id)) {
+            return $payment;
+        }
+
+        $driver = PaymentGatewayDriver::tryFrom((string) $payment->driver);
+        $storedPaymentMethod = $this->storedPaymentMethod($payment);
+
+        if ($driver === null) {
+            throw new InvalidArgumentException("Unsupported payment gateway [{$payment->driver}].");
+        }
+
+        if ($storedPaymentMethod === null) {
+            throw new InvalidArgumentException('Unsupported payment method.');
+        }
+
+        if ($gateway === null || $preparedDriver !== $driver) {
+            $gateway = $this->paymentGatewayManager->driver($driver);
+        }
+
+        try {
+            $transaction = $gateway->paymentStatus((string) $payment->order_id);
+        } catch (PaymentTransactionNotFoundException) {
+            $transaction = $gateway->createPayment(new CreatePaymentData(
+                orderId: (string) $payment->order_id,
+                amount: (int) round((float) $payment->amount),
+                paymentMethod: $storedPaymentMethod,
+                providerCode: (string) $payment->channel,
+                totalAmount: (int) round((float) $payment->total),
+            ));
+        }
+
+        if ($transaction->status === PaymentStatus::Pending) {
+            $this->ensureUsableDestination($transaction);
+        }
+
+        return ($this->reconcilePaymentStatus ?? new ReconcilePaymentStatusAction)->handle(
+            $payment,
+            $transaction,
+            'Payment gateway returned a mismatched payment response.',
+        );
     }
 
     private function existingPayment(Order $order, ?User $actor, ?string $guestToken): ?Payment
