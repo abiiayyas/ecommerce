@@ -1,0 +1,64 @@
+--- resources/views/components/cms/landing-page/⚡manager/manager.blade.php
++++ resources/views/components/cms/landing-page/⚡manager/manager.blade.php
+@@ -1,5 +1,5 @@
+-<div class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_26rem]">
+-    <section class="space-y-4">
++<div>
++    <section class="space-y-4 max-w-4xl mx-auto">
+         <div class="flex items-center justify-between gap-4">
+             <div>
+                 <flux:heading size="xl">Landing pages</flux:heading>
+@@ -26,38 +26,5 @@
+         </div>
+     </section>
+-
+-    <section class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+-        <flux:heading size="lg">{{ $editingId ? 'Edit landing page' : 'Landing page baru' }}</flux:heading>
+-        <form wire:submit="save" class="mt-5 space-y-4">
+-            <flux:select wire:model="productId" label="Produk" placeholder="Pilih produk">
+-                @foreach($this->products as $product)
+-                    <flux:select.option value="{{ $product->id }}">{{ $product->name }}</flux:select.option>
+-                @endforeach
+-            </flux:select>
+-            <flux:input wire:model.live.debounce.400ms="headline" label="Headline" />
+-            <flux:input wire:model="slug" label="Slug URL" />
+-            <flux:textarea wire:model="subheadline" label="Subheadline" rows="2" />
+-            <flux:textarea wire:model="benefits" label="Benefit (satu per baris)" rows="4" />
+-            <flux:textarea wire:model="description" label="Deskripsi" rows="5" />
+-            <flux:textarea wire:model="faqs" label="FAQ (pertanyaan|jawaban)" rows="4" />
+-            <flux:input wire:model="videoUrl" type="url" label="URL video (opsional)" />
+-            <div class="grid gap-4 sm:grid-cols-2">
+-                <flux:input wire:model="ctaText" label="Teks CTA" />
+-                <flux:input wire:model="accentColor" label="Warna aksen (#RRGGBB)" />
+-            </div>
+-            <flux:input wire:model="metaPixelId" label="Meta Pixel ID" />
+-            <flux:input wire:model="heroImage" type="file" accept="image/*" label="Hero image" />
+-            <flux:input wire:model="galleryImages" type="file" accept="image/*" multiple label="Tambah galeri" />
+-
+-            @if($editingId && ($current = $this->landingPages->firstWhere('id', $editingId)))
+-                <div class="grid grid-cols-3 gap-2">
+-                    @foreach($current->getMedia('gallery') as $media)
+-                        <button type="button" class="group relative overflow-hidden rounded-lg" wire:click="removeGalleryImage({{ $media->id }})" wire:confirm="Hapus gambar ini?">
+-                            <img src="{{ $media->getUrl('card') }}" alt="" class="aspect-square w-full object-cover">
+-                            <span class="absolute inset-x-0 bottom-0 bg-black/65 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100">Hapus</span>
+-                        </button>
+-                    @endforeach
+-                </div>
+-            @endif
+-
+-            <div class="space-y-3 rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800">
+-                <flux:switch wire:model="onlinePaymentEnabled" label="Pembayaran online" />
+-                <flux:switch wire:model="codEnabled" label="COD" />
+-                <flux:switch wire:model="isActive" label="Publikasikan" />
+-                @error('onlinePaymentEnabled') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+-            </div>
+-
+-            <div class="flex justify-end gap-2">
+-                @if($editingId)
+-                    <flux:button type="button" variant="ghost" wire:click="create">Batal</flux:button>
+-                @endif
+-                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Simpan</flux:button>
+-            </div>
+-        </form>
+-    </section>
+ </div>

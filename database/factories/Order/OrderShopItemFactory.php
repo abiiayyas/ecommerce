@@ -24,6 +24,7 @@ class OrderShopItemFactory extends Factory
             'order_id' => fn (array $attributes) => OrderShop::query()->find($attributes['order_shop_id'])?->order_id,
             'product_flat_id' => ProductFlat::factory(),
             'product_data' => ['name' => fake()->words(3, true), 'weight' => 100],
+            'fulfillment_data' => ['type' => 'owned_stock'],
             'quantity' => 1,
             'price' => 100_000,
             'total' => 100_000,

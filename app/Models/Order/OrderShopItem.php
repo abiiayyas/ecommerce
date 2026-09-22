@@ -17,6 +17,7 @@ class OrderShopItem extends Model
         'order_shop_id',
         'product_flat_id',
         'product_data',
+        'fulfillment_data',
         'quantity',
         'price',
         'total',
@@ -24,6 +25,7 @@ class OrderShopItem extends Model
 
     protected $casts = [
         'product_data' => 'array',
+        'fulfillment_data' => 'array',
         'quantity' => 'integer',
         'price' => 'decimal:2',
         'total' => 'decimal:2',

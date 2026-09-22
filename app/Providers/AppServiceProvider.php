@@ -2,9 +2,13 @@
 
 namespace App\Providers;
 
+use App\Contracts\Marketing\MarketingEventPublisher;
 use App\Contracts\Payments\PaymentGateway;
+use App\Contracts\Shipping\ShippingProvider;
 use App\Models\User;
+use App\Services\Marketing\MarketingTracker;
 use App\Services\Payments\PaymentGatewayManager;
+use App\Services\Shipping\ShippingManager;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -18,9 +22,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(MarketingEventPublisher::class, MarketingTracker::class);
+
         $this->app->bind(
             PaymentGateway::class,
             fn (): PaymentGateway => $this->app->make(PaymentGatewayManager::class)->driver(),
+        );
+
+        $this->app->bind(
+            ShippingProvider::class,
+            fn (): ShippingProvider => $this->app->make(ShippingManager::class)
+                ->driver(config('shipping.default', 'biteship')),
         );
     }
 

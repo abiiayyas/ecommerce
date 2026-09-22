@@ -11,13 +11,17 @@ use RuntimeException;
 
 class BiteshipService
 {
-    public string $baseUrl = 'https://api.biteship.com/v1';
+    public string $baseUrl;
 
     public string $apiKey;
 
     public function __construct(?string $apiKey = null)
     {
-        $this->apiKey = $apiKey ?? config('services.biteship.key');
+        $configuredApiKey = $apiKey ?? config('services.biteship.key');
+        $configuredBaseUrl = config('services.biteship.base_url', 'https://api.biteship.com/v1');
+
+        $this->apiKey = is_string($configuredApiKey) ? $configuredApiKey : '';
+        $this->baseUrl = is_string($configuredBaseUrl) ? rtrim($configuredBaseUrl, '/') : 'https://api.biteship.com/v1';
     }
 
     /** @return array<string, string> */

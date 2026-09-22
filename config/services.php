@@ -37,10 +37,16 @@ return [
 
     'biteship' => [
         'key' => env('BITESHIP_API_KEY'),
+        'base_url' => env('BITESHIP_BASE_URL', 'https://api.biteship.com/v1'),
         'webhook' => [
             'header_key' => env('BITESHIP_WEBHOOK_HEADER_KEY'),
             'header_secret' => env('BITESHIP_WEBHOOK_HEADER_SECRET'),
         ],
+    ],
+
+    'mengantar' => [
+        'api_key' => env('MENGANTAR_API_KEY'),
+        'base_url' => env('MENGANTAR_BASE_URL', 'https://app.mengantar.com'),
     ],
 
 ];

@@ -1,0 +1,25 @@
+--- app/Actions/Ecommerce/Payment/CreatePaymentAction.php
++++ app/Actions/Ecommerce/Payment/CreatePaymentAction.php
+@@ -85,11 +85,15 @@
+             $gateway = $this->paymentGatewayManager->driver($driver);
+         }
+ 
+-        $transaction = $gateway->createPayment(new CreatePaymentData(
+-            orderId: (string) $payment->order_id,
+-            amount: (int) round((float) $payment->amount),
+-            paymentMethod: $storedPaymentMethod,
+-            providerCode: (string) $payment->channel,
+-            totalAmount: (int) round((float) $payment->total),
+-        ));
++        try {
++            $transaction = $gateway->paymentStatus((string) $payment->order_id);
++        } catch (PaymentTransactionNotFoundException) {
++            $transaction = $gateway->createPayment(new CreatePaymentData(
++                orderId: (string) $payment->order_id,
++                amount: (int) round((float) $payment->amount),
++                paymentMethod: $storedPaymentMethod,
++                providerCode: (string) $payment->channel,
++                totalAmount: (int) round((float) $payment->total),
++            ));
++        }
+ 

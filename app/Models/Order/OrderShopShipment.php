@@ -13,6 +13,8 @@ class OrderShopShipment extends Model
 
     protected $fillable = [
         'order_shop_id',
+        'provider',
+        'external_id',
         'event',
         'provider_event_key',
         'courier_tracking_id',
@@ -26,7 +28,22 @@ class OrderShopShipment extends Model
         'courier_driver_plate_number',
         'courier_link',
         'status',
+        'provider_payload',
+        'status_history',
+        'last_error',
+        'booked_at',
+        'tracked_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'provider_payload' => 'array',
+            'status_history' => 'array',
+            'booked_at' => 'datetime',
+            'tracked_at' => 'datetime',
+        ];
+    }
 
     public function orderShop()
     {

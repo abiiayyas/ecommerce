@@ -1,0 +1,173 @@
+--- resources/views/components/cms/supplier/⚡manager/manager.blade.php
++++ resources/views/components/cms/supplier/⚡manager/manager.blade.php
+@@ -1,73 +1,81 @@
+ <div class="space-y-8">
+-    <div class="grid gap-5 lg:grid-cols-3">
+-        <form wire:submit="storeSupplier" class="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+-            <flux:heading size="lg">1. Supplier</flux:heading>
+-            <flux:input wire:model="supplierCode" label="Kode" placeholder="ANEKA" />
+-            <flux:input wire:model="supplierName" label="Nama supplier" />
+-            <flux:input wire:model="contactName" label="Nama kontak" />
+-            <flux:input wire:model="contactPhone" label="Telepon kontak" />
+-            <flux:input wire:model="orderPhone" label="WhatsApp order" />
+-            <flux:input wire:model="contactEmail" type="email" label="Email" />
+-            <flux:button type="submit" variant="primary" class="w-full">Tambah supplier</flux:button>
+-        </form>
+-
+-        <form wire:submit="storeWarehouse" class="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+-            <flux:heading size="lg">2. Gudang supplier</flux:heading>
+-            <flux:select wire:model="warehouseSupplierId" label="Supplier" placeholder="Pilih supplier">
+-                @foreach($this->suppliers as $supplier)
+-                    <flux:select.option value="{{ $supplier->id }}">{{ $supplier->name }}</flux:select.option>
+-                @endforeach
+-            </flux:select>
+-            <flux:input wire:model="warehouseName" label="Nama gudang" />
+-            <div class="grid grid-cols-2 gap-3">
+-                <flux:input wire:model="warehouseContactName" label="Kontak" />
+-                <flux:input wire:model="warehouseContactPhone" label="Telepon" />
+-            </div>
+-            <flux:textarea wire:model="warehouseAddress" label="Alamat pickup" rows="2" />
+-            <div class="grid grid-cols-2 gap-3">
+-                <flux:input wire:model="warehouseAreaName" label="Area" />
+-                <flux:input wire:model="warehousePostalCode" label="Kode pos" />
+-            </div>
+-            <div class="grid grid-cols-2 gap-3">
+-                <flux:select wire:model="primaryProvider" label="Provider utama">
+-                    <flux:select.option value="biteship">Biteship</flux:select.option>
+-                    <flux:select.option value="mengantar">Mengantar</flux:select.option>
+-                </flux:select>
+-                <flux:select wire:model="fallbackProvider" label="Fallback">
+-                    <flux:select.option value="">Tanpa fallback</flux:select.option>
+-                    <flux:select.option value="biteship">Biteship</flux:select.option>
+-                    <flux:select.option value="mengantar">Mengantar</flux:select.option>
+-                </flux:select>
+-            </div>
+-            <div class="grid grid-cols-2 gap-3">
+-                <flux:input wire:model="biteshipAreaId" label="Biteship area ID" />
+-                <flux:input wire:model="mengantarAreaId" label="Mengantar area ID" />
+-                <flux:input wire:model="biteshipAddressId" label="Biteship address ID" />
+-                <flux:input wire:model="mengantarAddressId" label="Mengantar address ID" />
+-            </div>
+-            <flux:button type="submit" variant="primary" class="w-full">Tambah gudang</flux:button>
+-        </form>
+-
+-        <form wire:submit="storeOffer" class="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+-            <flux:heading size="lg">3. Penawaran produk</flux:heading>
+-            <flux:select wire:model.live="offerSupplierId" label="Supplier" placeholder="Pilih supplier">
+-                @foreach($this->suppliers as $supplier)
+-                    <flux:select.option value="{{ $supplier->id }}">{{ $supplier->name }}</flux:select.option>
+-                @endforeach
+-            </flux:select>
+-            <flux:select wire:model="offerWarehouseId" label="Gudang" placeholder="Pilih gudang">
+-                @foreach($this->suppliers->firstWhere('id', (int) $offerSupplierId)?->warehouses ?? [] as $warehouse)
+-                    <flux:select.option value="{{ $warehouse->id }}">{{ $warehouse->name }}</flux:select.option>
+-                @endforeach
+-            </flux:select>
+-            <flux:select wire:model="productFlatId" label="Varian produk" placeholder="Pilih varian">
+-                @foreach($this->productFlats as $flat)
+-                    <flux:select.option value="{{ $flat->id }}">{{ $flat->product->name }} — {{ $flat->name }}</flux:select.option>
+-                @endforeach
+-            </flux:select>
+-            <flux:input wire:model="supplierSku" label="SKU supplier" />
+-            <div class="grid grid-cols-2 gap-3">
+-                <flux:input wire:model="costPrice" type="number" min="0" label="Harga modal" />
+-                <flux:input wire:model="availableStock" type="number" min="0" label="Stok (kosong = ∞)" />
+-            </div>
+-            <flux:button type="submit" variant="primary" class="w-full">Tambah & aktifkan</flux:button>
+-        </form>
+-    </div>
++    <flux:tab.group>
++        <flux:tabs>
++            <flux:tab name="supplier">1. Tambah Supplier</flux:tab>
++            <flux:tab name="warehouse">2. Tambah Gudang</flux:tab>
++            <flux:tab name="offer">3. Penawaran Produk</flux:tab>
++        </flux:tabs>
++
++        <flux:tab.panel name="supplier">
++            <form wire:submit="storeSupplier" class="max-w-2xl space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
++                <div class="grid grid-cols-2 gap-4">
++                    <flux:input wire:model="supplierCode" label="Kode" placeholder="ANEKA" />
++                    <flux:input wire:model="supplierName" label="Nama supplier" />
++                    <flux:input wire:model="contactName" label="Nama kontak" />
++                    <flux:input wire:model="contactPhone" label="Telepon kontak" />
++                    <flux:input wire:model="orderPhone" label="WhatsApp order" />
++                    <flux:input wire:model="contactEmail" type="email" label="Email" />
++                </div>
++                <div class="flex justify-end pt-2">
++                    <flux:button type="submit" variant="primary">Tambah supplier</flux:button>
++                </div>
++            </form>
++        </flux:tab.panel>
++
++        <flux:tab.panel name="warehouse">
++            <form wire:submit="storeWarehouse" class="max-w-4xl space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
++                <div class="grid grid-cols-2 gap-6">
++                    <div class="space-y-4">
++                        <flux:select wire:model="warehouseSupplierId" label="Supplier" placeholder="Pilih supplier">
++                            @foreach($this->suppliers as $supplier)
++                                <flux:select.option value="{{ $supplier->id }}">{{ $supplier->name }}</flux:select.option>
++                            @endforeach
++                        </flux:select>
++                        <flux:input wire:model="warehouseName" label="Nama gudang" />
++                        <div class="grid grid-cols-2 gap-3">
++                            <flux:input wire:model="warehouseContactName" label="Kontak" />
++                            <flux:input wire:model="warehouseContactPhone" label="Telepon" />
++                        </div>
++                        <flux:textarea wire:model="warehouseAddress" label="Alamat pickup" rows="3" />
++                    </div>
++                    <div class="space-y-4">
++                        <div class="grid grid-cols-2 gap-3">
++                            <flux:input wire:model="warehouseAreaName" label="Area" />
++                            <flux:input wire:model="warehousePostalCode" label="Kode pos" />
++                            <flux:select wire:model="primaryProvider" label="Provider utama">
++                                <flux:select.option value="biteship">Biteship</flux:select.option>
++                                <flux:select.option value="mengantar">Mengantar</flux:select.option>
++                            </flux:select>
++                            <flux:select wire:model="fallbackProvider" label="Fallback">
++                                <flux:select.option value="">Tanpa fallback</flux:select.option>
++                                <flux:select.option value="biteship">Biteship</flux:select.option>
++                                <flux:select.option value="mengantar">Mengantar</flux:select.option>
++                            </flux:select>
++                            <flux:input wire:model="biteshipAreaId" label="Biteship area ID" />
++                            <flux:input wire:model="mengantarAreaId" label="Mengantar area ID" />
++                            <flux:input wire:model="biteshipAddressId" label="Biteship address ID" />
++                            <flux:input wire:model="mengantarAddressId" label="Mengantar address ID" />
++                        </div>
++                    </div>
++                </div>
++                <div class="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800">
++                    <flux:button type="submit" variant="primary">Tambah gudang</flux:button>
++                </div>
++            </form>
++        </flux:tab.panel>
++
++        <flux:tab.panel name="offer">
++            <form wire:submit="storeOffer" class="max-w-3xl space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
++                <div class="grid grid-cols-2 gap-4">
++                    <flux:select wire:model.live="offerSupplierId" label="Supplier" placeholder="Pilih supplier">
++                        @foreach($this->suppliers as $supplier)
++                            <flux:select.option value="{{ $supplier->id }}">{{ $supplier->name }}</flux:select.option>
++                        @endforeach
++                    </flux:select>
++                    <flux:select wire:model="offerWarehouseId" label="Gudang" placeholder="Pilih gudang">
++                        @foreach($this->suppliers->firstWhere('id', (int) $offerSupplierId)?->warehouses ?? [] as $warehouse)
++                            <flux:select.option value="{{ $warehouse->id }}">{{ $warehouse->name }}</flux:select.option>
++                        @endforeach
++                    </flux:select>
++                    <flux:select wire:model="productFlatId" label="Varian produk" placeholder="Pilih varian">
++                        @foreach($this->productFlats as $flat)
++                            <flux:select.option value="{{ $flat->id }}">{{ $flat->product->name }} — {{ $flat->name }}</flux:select.option>
++                        @endforeach
++                    </flux:select>
++                    <flux:input wire:model="supplierSku" label="SKU supplier" />
++                    <flux:input wire:model="costPrice" type="number" min="0" label="Harga modal" />
++                    <flux:input wire:model="availableStock" type="number" min="0" label="Stok (kosong = ∞)" />
++                </div>
++                <div class="flex justify-end pt-2">
++                    <flux:button type="submit" variant="primary">Tambah & aktifkan</flux:button>
++                </div>
++            </form>
++        </flux:tab.panel>
++    </flux:tab.group>
+ 
+     <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">

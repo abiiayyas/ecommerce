@@ -161,7 +161,7 @@
                         @foreach ($product->productFlats as $flat)
                             <div x-show="activeFlatProduct == @js($flat->id)" x-cloak>
                                 <div x-show="activeTab == 'description'" x-cloak class="whitespace-pre-line">
-                                    {!! $flat->description !!}
+                                    {{ $flat->description }}
                                 </div>
                                 <div x-show="activeTab == 'specification'" x-cloak class="flex flex-col gap-3">
                                     <div class="flex">

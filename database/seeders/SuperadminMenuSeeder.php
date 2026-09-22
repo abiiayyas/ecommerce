@@ -25,6 +25,7 @@ class SuperadminMenuSeeder extends Seeder
         $this->reviewMenu();
         $this->productMenu();
         $this->attributeMenu();
+        $this->dropshipMenu();
         $this->managementMenu();
     }
 
@@ -180,6 +181,36 @@ class SuperadminMenuSeeder extends Seeder
             'order' => 4,
             'active_pattern' => 'cms.management.user',
             'status' => 1,
+        ]);
+    }
+
+    public function dropshipMenu(): void
+    {
+        Menu::create([
+            'role_id' => $this->role->id,
+            'name' => 'Dropship',
+            'url' => '#',
+            'icon' => 'truck',
+            'order' => 300,
+            'active_pattern' => 'cms.supplier,cms.landing-page',
+            'status' => 1,
+        ])->subMenu()->createMany([
+            [
+                'role_id' => $this->role->id,
+                'name' => 'Supplier & Gudang',
+                'url' => 'cms.supplier',
+                'order' => 1,
+                'active_pattern' => 'cms.supplier',
+                'status' => 1,
+            ],
+            [
+                'role_id' => $this->role->id,
+                'name' => 'Landing Page Iklan',
+                'url' => 'cms.landing-page',
+                'order' => 2,
+                'active_pattern' => 'cms.landing-page',
+                'status' => 1,
+            ],
         ]);
     }
 }

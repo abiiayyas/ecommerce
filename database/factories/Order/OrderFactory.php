@@ -2,6 +2,8 @@
 
 namespace Database\Factories\Order;
 
+use App\Enums\OrderFulfillmentStatus;
+use App\Enums\SalesChannel;
 use App\Models\Order\Order;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -33,6 +35,8 @@ class OrderFactory extends Factory
             'tax_total' => 0,
             'total' => 113_500,
             'status' => false,
+            'sales_channel' => SalesChannel::Storefront,
+            'fulfillment_status' => OrderFulfillmentStatus::Pending,
         ];
     }
 

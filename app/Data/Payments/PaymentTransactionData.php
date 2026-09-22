@@ -7,7 +7,7 @@ use App\Enums\PaymentStatus;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
-final readonly class PaymentTransactionData
+readonly class PaymentTransactionData
 {
     public function __construct(
         public string $id,

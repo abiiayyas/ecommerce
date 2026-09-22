@@ -16,7 +16,6 @@ use App\Services\Payments\PaymentFeeCalculator;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Payments\PaymentTransactionNotFoundException;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -85,13 +84,17 @@ class CreatePaymentAction
             $gateway = $this->paymentGatewayManager->driver($driver);
         }
 
-        $transaction = $gateway->createPayment(new CreatePaymentData(
-            orderId: (string) $payment->order_id,
-            amount: (int) round((float) $payment->amount),
-            paymentMethod: $storedPaymentMethod,
-            providerCode: (string) $payment->channel,
-            totalAmount: (int) round((float) $payment->total),
-        ));
+        try {
+            $transaction = $gateway->paymentStatus((string) $payment->order_id);
+        } catch (PaymentTransactionNotFoundException) {
+            $transaction = $gateway->createPayment(new CreatePaymentData(
+                orderId: (string) $payment->order_id,
+                amount: (int) round((float) $payment->amount),
+                paymentMethod: $storedPaymentMethod,
+                providerCode: (string) $payment->channel,
+                totalAmount: (int) round((float) $payment->total),
+            ));
+        }
 
         if ($transaction->status === PaymentStatus::Pending) {
             $this->ensureUsableDestination($transaction);

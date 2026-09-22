@@ -2,14 +2,20 @@
 
 namespace App\Actions\Ecommerce\Payment;
 
+use App\Actions\Inventory\CommitOrderStockAction;
+use App\Contracts\Marketing\MarketingEventPublisher;
+use App\Data\Marketing\MarketingEventData;
 use App\Data\Payments\PaymentTransactionData;
+use App\Enums\OrderFulfillmentStatus;
 use App\Enums\PaymentGatewayDriver;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Enums\SalesChannel;
 use App\Mail\OrderPaid;
 use App\Mail\OrderPaymentFailed;
 use App\Models\Order\Order;
 use App\Models\Payment\Payment;
+use App\Services\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -79,6 +85,11 @@ final class ReconcilePaymentStatusAction
 
             if ($transaction->status === PaymentStatus::Paid) {
                 $lockedOrder->update(['status' => true]);
+                if ($lockedOrder->sales_channel === SalesChannel::AdLanding) {
+                    app(CommitOrderStockAction::class)->handle($lockedOrder);
+                    $lockedOrder->update(['fulfillment_status' => OrderFulfillmentStatus::AwaitingSupplier]);
+                    $this->sendLandingPaidSignalsAfterCommit($lockedOrder);
+                }
                 $this->sendAfterCommit($lockedPayment, $lockedOrder, PaymentStatus::Paid);
             } elseif ($this->isProviderTerminalStatus($transaction->status)) {
                 $this->sendAfterCommit($lockedPayment, $lockedOrder, $transaction->status);
@@ -318,5 +329,41 @@ final class ReconcilePaymentStatusAction
             ->where('subject_type', $payment->getMorphClass())
             ->where('subject_id', $payment->getKey())
             ->exists();
+    }
+
+    private function sendLandingPaidSignalsAfterCommit(Order $order): void
+    {
+        DB::afterCommit(function () use ($order): void {
+            $guest = $order->guest_data ?? [];
+            $sourceUrl = $order->landingPage?->slug
+                ? route('landing.show', ['slug' => $order->landingPage->slug])
+                : route('home');
+            app(MarketingEventPublisher::class)->publish(new MarketingEventData(
+                eventId: app(MarketingEventPublisher::class)->newEventId(),
+                name: 'Purchase',
+                occurredAt: now(),
+                sourceUrl: $sourceUrl,
+                customerData: [
+                    'email' => $guest['contact_email'] ?? null,
+                    'phone' => $guest['contact_phone'] ?? null,
+                    'external_id' => (string) $order->getKey(),
+                ],
+                customData: [
+                    'currency' => 'IDR',
+                    'value' => (float) $order->total,
+                    'order_id' => $order->reference,
+                ],
+            ));
+
+            if (filled($guest['contact_phone'] ?? null)) {
+                app(NotificationDispatcher::class)->sendWhatsApp(
+                    messageType: 'payment_success',
+                    recipient: (string) $guest['contact_phone'],
+                    message: "Pembayaran pesanan {$order->reference} berhasil. Pesanan segera diproses.",
+                    idempotencyKey: "order:{$order->getKey()}:paid",
+                    context: ['order_id' => $order->getKey()],
+                );
+            }
+        });
     }
 }
