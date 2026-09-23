@@ -8,12 +8,12 @@
 
         <!-- Tabs -->
         <div class="flex gap-6 border-b mb-6 overflow-x-auto hide-scrollbar">
-            <button wire:click="setStatus('semua')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'semua' ? 'text-gray-600 border-b-2 border-gray-600' : 'text-gray-500 hover:text-gray-600' }}">Semua</button>
-            <button wire:click="setStatus('menunggu-pembayaran')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'menunggu-pembayaran' ? 'text-gray-600 border-b-2 border-gray-600' : 'text-gray-500 hover:text-gray-600' }}">Menunggu Pembayaran</button>
-            <button wire:click="setStatus('proses')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'proses' ? 'text-gray-600 border-b-2 border-gray-600' : 'text-gray-500 hover:text-gray-600' }}">Proses</button>
-            <button wire:click="setStatus('dikirim')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'dikirim' ? 'text-gray-600 border-b-2 border-gray-600' : 'text-gray-500 hover:text-gray-600' }}">Dikirim</button>
-            <button wire:click="setStatus('sampai')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'sampai' ? 'text-gray-600 border-b-2 border-gray-600' : 'text-gray-500 hover:text-gray-600' }}">Sampai</button>
-            <button wire:click="setStatus('gagal')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'gagal' ? 'text-gray-600 border-b-2 border-gray-600' : 'text-gray-500 hover:text-gray-600' }}">Gagal</button>
+            <button wire:click="setStatus('semua')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'semua' ? 'text-[#0c37b0] border-b-2 border-[#0c37b0]' : 'text-gray-500 hover:text-gray-600' }}">Semua</button>
+            <button wire:click="setStatus('menunggu-pembayaran')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'menunggu-pembayaran' ? 'text-[#0c37b0] border-b-2 border-[#0c37b0]' : 'text-gray-500 hover:text-gray-600' }}">Menunggu Pembayaran</button>
+            <button wire:click="setStatus('proses')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'proses' ? 'text-[#0c37b0] border-b-2 border-[#0c37b0]' : 'text-gray-500 hover:text-gray-600' }}">Proses</button>
+            <button wire:click="setStatus('dikirim')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'dikirim' ? 'text-[#0c37b0] border-b-2 border-[#0c37b0]' : 'text-gray-500 hover:text-gray-600' }}">Dikirim</button>
+            <button wire:click="setStatus('sampai')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'sampai' ? 'text-[#0c37b0] border-b-2 border-[#0c37b0]' : 'text-gray-500 hover:text-gray-600' }}">Sampai</button>
+            <button wire:click="setStatus('gagal')" class="pb-3 text-sm font-bold whitespace-nowrap {{ $status === 'gagal' ? 'text-[#0c37b0] border-b-2 border-[#0c37b0]' : 'text-gray-500 hover:text-gray-600' }}">Gagal</button>
         </div>
 
         <div class="space-y-4">

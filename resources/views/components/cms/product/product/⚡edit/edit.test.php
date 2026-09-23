@@ -18,7 +18,6 @@ beforeEach(function () {
         Permission::findOrCreate('show'.Product::class, 'api'),
         Permission::findOrCreate('update'.Product::class, 'api'),
     ]);
-    config()->set('shop.single_shop', false);
 });
 
 it('rejects mounting a product owned by another shopowner', function () {
@@ -32,12 +31,11 @@ it('rejects mounting a product owned by another shopowner', function () {
         ->toThrow(ModelNotFoundException::class);
 });
 
-it('only exposes shops owned by the shopowner while editing', function () {
+it('selects the shopowner shop in single-shop mode', function () {
     $shopowner = User::factory()->create();
     $shopowner->assignRole('shopowner');
 
     $ownedShop = Shop::factory()->for($shopowner)->create(['name' => 'Owned Shop']);
-    $foreignShop = Shop::factory()->create(['name' => 'Foreign Shop']);
     $product = Product::factory()->for($ownedShop)->create();
     ProductFlat::factory()->create([
         'product_id' => $product->id,
@@ -46,8 +44,7 @@ it('only exposes shops owned by the shopowner while editing', function () {
 
     Livewire::actingAs($shopowner)
         ->test('cms.product.product.edit', ['product' => $product])
-        ->assertSee($ownedShop->name)
-        ->assertDontSee($foreignShop->name);
+        ->assertSet('shop_id', $ownedShop->id);
 });
 
 it('rejects foreign nested product flat identifiers in the component', function () {

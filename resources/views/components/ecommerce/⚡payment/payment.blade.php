@@ -68,9 +68,9 @@
                             <label
                                 wire:key="payment-method-{{ $method['providerCode'] }}"
                                 @class([
-                                    'relative flex min-h-32 cursor-pointer flex-col justify-between gap-4 rounded-xl border p-4 transition focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-gray-900',
-                                    'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600 dark:bg-indigo-950/40' => $paymentMethod === $method['providerCode'],
-                                    'border-gray-200 bg-white hover:border-indigo-400 hover:shadow-sm dark:border-gray-700 dark:bg-gray-900' => $paymentMethod !== $method['providerCode'] && $method['isAvailable'],
+                                    'relative flex min-h-32 cursor-pointer flex-col justify-between gap-4 rounded-xl border p-4 transition focus-within:ring-2 focus-within:ring-[#0c37b0] focus-within:ring-offset-2 dark:focus-within:ring-offset-gray-900',
+                                    'border-[#0c37b0] bg-blue-50/50 ring-1 ring-[#0c37b0] dark:bg-blue-950/40' => $paymentMethod === $method['providerCode'],
+                                    'border-gray-200 bg-white hover:border-[#0c37b0]/50 hover:shadow-sm dark:border-gray-700 dark:bg-gray-900' => $paymentMethod !== $method['providerCode'] && $method['isAvailable'],
                                     'cursor-not-allowed border-gray-200 bg-gray-100 opacity-60 dark:border-gray-800 dark:bg-gray-950' => ! $method['isAvailable'],
                                 ])
                             >
@@ -95,7 +95,7 @@
                                     </div>
 
                                     @if ($paymentMethod === $method['providerCode'])
-                                        <flux:icon.check-circle class="size-5 text-indigo-600 dark:text-indigo-400" />
+                                        <flux:icon.check-circle class="size-5 text-[#0c37b0] dark:text-[#3867f0]" />
                                     @endif
                                 </div>
 

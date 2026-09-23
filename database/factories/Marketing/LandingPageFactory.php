@@ -31,7 +31,7 @@ class LandingPageFactory extends Factory
                 'video_url' => null,
             ],
             'cta_text' => 'Pesan sekarang',
-            'accent_color' => '#ca4a2c',
+            'accent_color' => '#0c37b0',
             'online_payment_enabled' => true,
             'cod_enabled' => false,
             'is_active' => true,

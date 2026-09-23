@@ -26,8 +26,12 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    --color-brand: #0c37b0;
+    --color-brand-hover: #092b8d;
+    --color-brand-active: #072270;
+
+    --color-accent: #0c37b0;
+    --color-accent-content: #0c37b0;
     --color-accent-foreground: var(--color-white);
 
     --animate-marquee: marquee 20s linear infinite;
@@ -54,9 +58,9 @@
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: #1e4fd9;
+        --color-accent-content: #1e4fd9;
+        --color-accent-foreground: var(--color-white);
     }
 }
 

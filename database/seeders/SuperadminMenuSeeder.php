@@ -27,6 +27,7 @@ class SuperadminMenuSeeder extends Seeder
         $this->attributeMenu();
         $this->dropshipMenu();
         $this->managementMenu();
+        $this->bannerMenu();
     }
 
     public function dashboardMenu()
@@ -106,6 +107,19 @@ class SuperadminMenuSeeder extends Seeder
             'url' => 'cms.product.index',
             'order' => 2,
             'active_pattern' => 'cms.product.index,cms.product.edit',
+            'status' => 1,
+        ]);
+    }
+
+    public function bannerMenu(): void
+    {
+        Menu::create([
+            'role_id' => $this->role->id,
+            'name' => 'Banners',
+            'url' => 'cms.banner',
+            'icon' => 'photo',
+            'order' => 250,
+            'active_pattern' => 'cms.banner',
             'status' => 1,
         ]);
     }

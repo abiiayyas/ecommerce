@@ -9,8 +9,8 @@
             <flux:sidebar.header>
                 <flux:sidebar.brand
                     href="{{ route('cms.dashboard') }}"
-                    logo="https://fluxui.dev/img/demo/logo.png"
-                    logo:dark="https://fluxui.dev/img/demo/dark-mode-logo.png"
+                    logo="{{ asset('img/logo3.png') }}"
+                    logo:dark="{{ asset('img/logo3.png') }}"
                     :name="config('app.name')"
                 />
                 <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />

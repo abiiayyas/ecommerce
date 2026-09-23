@@ -151,8 +151,8 @@
                 <div>
                     <div class="border-b mb-4">
                         <nav class="flex gap-6 text-sm font-bold">
-                            <button type="button" @click="activeTab = 'description'" :class="{'text-gray-600 border-b-2 border-gray-600 pb-3': activeTab == 'description', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'description'}">Detail</button>
-                            <button type="button" @click="activeTab = 'specification'" :class="{'text-gray-600 border-b-2 border-gray-600 pb-3': activeTab == 'specification', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'specification'}">Spesifikasi</button>
+                            <button type="button" @click="activeTab = 'description'" :class="{'text-[#0c37b0] border-b-2 border-[#0c37b0] pb-3': activeTab == 'description', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'description'}">Detail</button>
+                            <button type="button" @click="activeTab = 'specification'" :class="{'text-[#0c37b0] border-b-2 border-[#0c37b0] pb-3': activeTab == 'specification', 'text-gray-500 hover:text-gray-600 pb-3': activeTab !== 'specification'}">Spesifikasi</button>
                         </nav>
                     </div>
 

@@ -95,13 +95,13 @@
                     <button
                         wire:key="rate-{{ $shopId }}-{{ $code }}-{{ $service }}"
                         wire:click="selectRate('{{ $code }}', '{{ $service }}', {{ $price }}, '{{ addslashes($name) }}', '{{ addslashes($etd) }}')"
-                        class="w-full border rounded-xl p-3 cursor-pointer flex items-center justify-between transition text-left {{ $isSelected ? 'border-gray-500 bg-gray-50' : 'hover:border-gray-300 bg-white' }}"
+                        class="w-full border rounded-xl p-3 cursor-pointer flex items-center justify-between transition text-left {{ $isSelected ? 'border-[#0c37b0] bg-blue-50/40 ring-1 ring-[#0c37b0]' : 'hover:border-gray-300 bg-white' }}"
                     >
                         <div class="flex items-center gap-3">
                             {{-- Radio indicator --}}
-                            <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 {{ $isSelected ? 'border-gray-500' : 'border-gray-300' }}">
+                            <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 {{ $isSelected ? 'border-[#0c37b0]' : 'border-gray-300' }}">
                                 @if($isSelected)
-                                    <div class="w-2 h-2 rounded-full bg-gray-500"></div>
+                                    <div class="w-2 h-2 rounded-full bg-[#0c37b0]"></div>
                                 @endif
                             </div>
                             <div>

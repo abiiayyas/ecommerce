@@ -24,7 +24,7 @@ new class extends Component
     public string $faqs = '';
     public string $videoUrl = '';
     public string $ctaText = 'Pesan sekarang';
-    public string $accentColor = '#ca4a2c';
+    public string $accentColor = '#0c37b0';
     public bool $onlinePaymentEnabled = true;
     public bool $codEnabled = false;
     public string $metaPixelId = '';
@@ -33,6 +33,11 @@ new class extends Component
 
     /** @var array<int, mixed> */
     public array $galleryImages = [];
+
+    public function mount(): void
+    {
+        $this->authorizeOperator();
+    }
 
     #[Computed]
     public function landingPages(): Collection
@@ -50,21 +55,25 @@ new class extends Component
             ->get(['id', 'name']);
     }
 
-    public function create()
+    public function create(): void
     {
         $this->authorizeOperator();
-        $product = \App\Models\Product\Product::query()->first();
+        $product = $this->products()->first();
+
         if (! $product) {
-            $this->dispatch('toast', type: 'error', message: 'Silakan buat produk terlebih dahulu.');
+            $this->dispatch('toast', type: 'error', message: 'Silakan buat produk aktif beserta variannya terlebih dahulu.');
+
             return;
         }
+
         $page = LandingPage::query()->create([
             'product_id' => $product->id,
-            'slug' => 'draft-' . uniqid(),
+            'slug' => 'draft-' . Str::lower(Str::random(12)),
             'headline' => 'Draft Landing Page',
             'is_active' => false,
         ]);
-        return redirect()->route('cms.landing-page.builder', ['id' => $page->id]);
+
+        redirect()->route('cms.landing-page.builder', ['id' => $page->id]);
     }
 
     public function edit(int $id): void
@@ -80,7 +89,7 @@ new class extends Component
         $this->benefits = implode("\n", $page->content['benefits'] ?? []);
         $this->description = $page->content['description'] ?? '';
         $this->faqs = collect($page->content['faqs'] ?? [])
-            ->map(fn (array $faq): string => ($faq['question'] ?? '').'|'.($faq['answer'] ?? ''))
+            ->map(fn (array $faq): string => ($faq['question'] ?? '') . '|' . ($faq['answer'] ?? ''))
             ->implode("\n");
         $this->videoUrl = $page->content['video_url'] ?? '';
         $this->ctaText = $page->cta_text;
@@ -128,6 +137,10 @@ new class extends Component
 
             return;
         }
+        $existingBuilder = $this->editingId
+            ? LandingPage::query()->find($this->editingId)?->content['builder'] ?? null
+            : null;
+
 
         $page = LandingPage::query()->updateOrCreate(
             ['id' => $this->editingId],
@@ -136,12 +149,13 @@ new class extends Component
                 'slug' => Str::slug($validated['slug']),
                 'headline' => $validated['headline'],
                 'subheadline' => $validated['subheadline'] ?: null,
-                'content' => [
+                'content' => array_filter([
                     'benefits' => collect(preg_split('/\r\n|\r|\n/', $validated['benefits'] ?? ''))->map(fn (string $line): string => trim($line))->filter()->values()->all(),
                     'description' => $validated['description'] ?: null,
                     'faqs' => $this->parsedFaqs($validated['faqs'] ?? ''),
                     'video_url' => $validated['videoUrl'] ?: null,
-                ],
+                    'builder' => $existingBuilder,
+                ], fn (mixed $value): bool => $value !== null),
                 'cta_text' => $validated['ctaText'],
                 'accent_color' => strtolower($validated['accentColor']),
                 'online_payment_enabled' => $validated['onlinePaymentEnabled'],
@@ -167,6 +181,19 @@ new class extends Component
         unset($this->landingPages);
         $this->dispatch('toast', type: 'success', message: 'Landing page berhasil disimpan.');
         $this->resetForm();
+    }
+
+    public function toggleActive(int $id): void
+    {
+        $this->authorizeOperator();
+        $page = LandingPage::query()->findOrFail($id);
+        $isActive = ! $page->is_active;
+        $page->update([
+            'is_active' => $isActive,
+            'published_at' => $isActive ? now() : null,
+        ]);
+        unset($this->landingPages);
+        $this->dispatch('toast', type: 'success', message: $isActive ? 'Landing page dipublikasikan.' : 'Landing page dinonaktifkan.');
     }
 
     public function removeGalleryImage(int $mediaId): void
@@ -202,7 +229,7 @@ new class extends Component
             'faqs', 'videoUrl', 'metaPixelId', 'isActive', 'heroImage', 'galleryImages',
         ]);
         $this->ctaText = 'Pesan sekarang';
-        $this->accentColor = '#ca4a2c';
+        $this->accentColor = '#0c37b0';
         $this->onlinePaymentEnabled = true;
         $this->codEnabled = false;
         $this->resetValidation();

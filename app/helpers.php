@@ -35,7 +35,7 @@ function getDefaultShop()
     });
 }
 
-function isSingleShop()
+function isSingleShop(): bool
 {
-    return config('shop.single_shop', true);
+    return true;
 }

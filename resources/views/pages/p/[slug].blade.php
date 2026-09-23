@@ -38,6 +38,8 @@ render(function (View $view, string $slug, RecordLandingPageVisitAction $recordV
     <meta name="meta-pixel-id" content="{{ $landingPage->meta_pixel_id ?: config('marketing.providers.meta.pixel_id') }}">
     <meta name="meta-event-id" content="{{ $metaEventId }}">
     <title>{{ $landingPage->headline }} | {{ config('app.name') }}</title>
+    <link rel="icon" href="{{ asset('img/logo3.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ asset('img/logo3.png') }}">
     @vite(['resources/css/app.css', 'resources/js/landing-page.js'])
 </head>
 <body class="bg-stone-50 text-stone-950 antialiased">
@@ -90,6 +92,45 @@ render(function (View $view, string $slug, RecordLandingPageVisitAction $recordV
                 </a>
             </div>
         </section>
+
+        @php($builderBlocks = is_array($builder['blocks'] ?? null) ? array_slice($builder['blocks'], 0, 50) : [])
+        @if (filled($builderBlocks))
+            <section
+                class="mx-auto grid max-w-5xl gap-5 px-4 sm:px-8"
+                style="padding-top: {{ min(160, max(0, (int) ($builder['paddingY'] ?? 24))) }}px; padding-bottom: {{ min(160, max(0, (int) ($builder['paddingY'] ?? 24))) }}px; font-family: {{ in_array($builder['font'] ?? null, ['Inter', 'Manrope', 'Roboto', 'Poppins'], true) ? $builder['font'] : 'Inter' }}"
+            >
+                @foreach ($builderBlocks as $block)
+                    @php($blockType = $block['type'] ?? 'text')
+                    @php($blockContent = trim((string) ($block['content'] ?? '')))
+                    @if ($blockType === 'text')
+                        <p class="whitespace-pre-line text-lg leading-8 text-stone-700">{{ $blockContent }}</p>
+                    @elseif ($blockType === 'button')
+                        <div><a href="#pesan" class="inline-flex min-h-12 items-center justify-center px-6 font-semibold text-white" style="background-color: {{ $landingPage->accent_color }}">{{ $blockContent ?: $landingPage->cta_text }}</a></div>
+                    @elseif ($blockType === 'list')
+                        <ul class="grid gap-3 sm:grid-cols-2">
+                            @foreach (preg_split('/\r\n|\r|\n/', $blockContent) as $item)
+                                @if (filled(trim($item)))
+                                    <li class="flex gap-3 border-t border-stone-200 pt-3 leading-7"><span aria-hidden="true">✓</span><span>{{ trim($item) }}</span></li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    @elseif ($blockType === 'testimonial')
+                        <blockquote class="border-l-2 border-stone-900 pl-5 text-xl italic leading-8 text-stone-700">“{{ $blockContent }}”</blockquote>
+                    @elseif ($blockType === 'faq')
+                        @php([$question, $answer] = array_pad(explode('|', $blockContent, 2), 2, ''))
+                        @if (filled(trim($question)) && filled(trim($answer)))
+                            <details class="border-y border-stone-200 py-4"><summary class="cursor-pointer font-semibold">{{ trim($question) }}</summary><p class="mt-3 leading-7 text-stone-700">{{ trim($answer) }}</p></details>
+                        @endif
+                    @elseif ($blockType === 'form')
+                        <div class="rounded-xl bg-stone-100 p-6"><h2 class="text-2xl font-semibold">Siap pesan?</h2><p class="mt-2 text-stone-600">Lengkapi data pengiriman di bawah.</p><a href="#pesan" class="mt-4 inline-flex font-semibold underline underline-offset-4">Ke form pemesanan →</a></div>
+                    @elseif ($blockType === 'divider')
+                        <div class="border-t border-stone-200"></div>
+                    @elseif (filled($blockContent))
+                        <p class="whitespace-pre-line leading-7 text-stone-700">{{ $blockContent }}</p>
+                    @endif
+                @endforeach
+            </section>
+        @endif
 
         @if (filled($content['benefits'] ?? []))
             <section class="border-y border-stone-200 bg-white px-4 py-10 sm:px-8 lg:py-14" aria-labelledby="benefit-title">
@@ -181,7 +222,7 @@ render(function (View $view, string $slug, RecordLandingPageVisitAction $recordV
                         </div>
                     </fieldset>
 
-                    <button type="button" data-load-rates class="min-h-12 border border-stone-500 px-5 font-semibold hover:bg-stone-800 focus-visible:outline-2 focus-visible:outline-offset-4">Hitung ongkir</button>
+                    <button type="button" data-load-rates class="min-h-12 border border-[#0c37b0] bg-[#0c37b0] px-5 font-semibold text-white transition hover:bg-[#092b8d] focus-visible:outline-2 focus-visible:outline-offset-4">Hitung ongkir</button>
                     <div data-rate-results class="grid gap-2" aria-live="polite"></div>
                     @if ($errors->any())
                         <div class="border border-red-400 bg-red-950 p-4 text-sm text-red-100" role="alert">

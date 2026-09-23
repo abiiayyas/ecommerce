@@ -38,8 +38,8 @@
         <div class="mb-8">
             <h3 class="font-bold text-gray-900 mb-3 text-sm">Filter Ulasan</h3>
             <div class="flex flex-wrap gap-2">
-                <button wire:click="setFilter('all')" class="{{ $filter === 'all' ? 'bg-gray-100 text-gray-900 border-gray-900' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100' }} border px-4 py-1.5 rounded-full text-sm font-semibold transition">Semua Ulasan</button>
-                <button wire:click="setFilter('with_media')" class="{{ $filter === 'with_media' ? 'bg-gray-100 text-gray-900 border-gray-900' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50' }} border px-4 py-1.5 rounded-full text-sm font-semibold transition">Dengan Foto & Video</button>
+                <button wire:click="setFilter('all')" class="{{ $filter === 'all' ? 'bg-[#0c37b0] text-white border-[#0c37b0]' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100' }} border px-4 py-1.5 rounded-full text-sm font-semibold transition">Semua Ulasan</button>
+                <button wire:click="setFilter('with_media')" class="{{ $filter === 'with_media' ? 'bg-[#0c37b0] text-white border-[#0c37b0]' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50' }} border px-4 py-1.5 rounded-full text-sm font-semibold transition">Dengan Foto & Video</button>
             </div>
         </div>
 

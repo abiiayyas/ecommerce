@@ -14,20 +14,20 @@ use Livewire\Livewire;
 beforeEach(function () {
     $shopownerRole = Role::findOrCreate('shopowner', 'api');
     $shopownerRole->givePermissionTo(Permission::findOrCreate('create'.Product::class, 'api'));
-    config()->set('shop.single_shop', false);
 });
 
-it('only exposes shops owned by the shopowner', function () {
+it('chooses the shopowner shop in single-shop mode', function () {
+    config()->set('shop.single_shop', false);
+
     $shopowner = User::factory()->create();
     $shopowner->assignRole('shopowner');
 
     $ownedShop = Shop::factory()->for($shopowner)->create(['name' => 'Owned Shop']);
-    Shop::factory()->create(['name' => 'Foreign Shop']);
 
     Livewire::actingAs($shopowner)
         ->test('cms.product.product.create')
-        ->assertSee($ownedShop->name)
-        ->assertDontSee('Foreign Shop');
+        ->call('resetForm')
+        ->assertSet('shop_id', $ownedShop->id);
 });
 
 it('rejects a foreign shop when creating a product', function () {

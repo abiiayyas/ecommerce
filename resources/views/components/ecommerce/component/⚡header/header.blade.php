@@ -54,11 +54,9 @@
     <header class="bg-white border-b sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4 md:gap-8">
             <!-- Logo -->
-            <a href="/" class="text-2xl md:text-3xl font-black tracking-tight shrink-0" wire:navigate>
-                {{ config('app.name', 'Nexa') }}
-                <span class="text-gray-800">.</span>
+            <a href="/" class="flex items-center shrink-0" wire:navigate>
+                <img src="{{ asset('img/logo.png') }}" alt="Diginiaga" class="h-8 md:h-9 w-auto object-contain">
             </a>
-
             <!-- Search -->
             <div class="hidden md:flex flex-1 items-center max-w-3xl relative">
                 <flux:input
@@ -135,7 +133,7 @@
         <!-- Mobile Search (Visible on small screens) -->
         <div class="md:hidden px-4 pb-3">
             <flux:input
-                placeholder="Cari di Nexa..."
+                placeholder="Cari di {{ config('app.name', 'Diginiaga') }}..."
                 icon="magnifying-glass"
                 class="w-full rounded-xl"
             />
